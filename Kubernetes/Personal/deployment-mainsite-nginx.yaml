@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: cossiomainsite
+  name: cossiomainsite
+  namespace: jeancossio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cossiomainsite
+  template:
+    metadata:
+      labels:
+        app: cossiomainsite
+    spec:
+      containers:
+      - image: nginx:jean
+        name: nginx
+        ports:
+          - containerPort: 8016

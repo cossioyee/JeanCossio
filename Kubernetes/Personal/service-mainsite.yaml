@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: cossiomainsite
+  name: cossiomainsite
+  namespace: jeancossio
+spec:
+  ports:
+  - port: 8016
+    protocol: TCP
+    targetPort: 8016
+  selector:
+    app: cossiomainsite
+  type: LoadBalancer 
