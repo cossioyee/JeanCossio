@@ -9,7 +9,7 @@ spec:
   ports:
   - port: 8016
     protocol: TCP
-    targetPort: 8016
+    targetPort: 80
   selector:
     app: cossiomainsite
   type: LoadBalancer 

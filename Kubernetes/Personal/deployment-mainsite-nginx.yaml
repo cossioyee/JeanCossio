@@ -16,7 +16,14 @@ spec:
         app: cossiomainsite
     spec:
       containers:
-      - image: nginx:jean
+      - image: nginx:1.27.4
         name: nginx
         ports:
-          - containerPort: 8016
+          - containerPort: 80
+        volumeMounts:
+          - mountPath: /usr/share/nginx/html
+            name: mainsite-volume
+      volumes:
+        - name: mainsite-volume
+          persistentVolumeClaim:
+            claimName: mainsite-data

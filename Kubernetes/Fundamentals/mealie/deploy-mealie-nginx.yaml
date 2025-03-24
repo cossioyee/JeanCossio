@@ -16,7 +16,14 @@ spec:
         app: mealie-nginx
     spec:
       containers:
-      - image: ghcr.io/mealie-recipes/mealie:v2.4.1
+      - image: ghcr.io/mealie-recipes/mealie:v2.7.1
         name: nginx
         ports:
           - containerPort: 9000
+        volumeMounts:
+          - mountPath: /app/data
+            name: mealie-volume
+      volumes:
+        - name: mealie-volume
+          persistentVolumeClaim:
+            claimName: mealie-data
