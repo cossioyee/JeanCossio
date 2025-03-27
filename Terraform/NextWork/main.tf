@@ -34,13 +34,16 @@ resource "aws_instance" "app_server" {
       "source ~/.bashrc",
       "mvn -v",
       "java -version",
-      "mvn archetype:generate -DgroupId=com.nextwork.app -DartifactId=nextwork-web-project -DarchetypeArtifactId=maven-archetype-webapp -DinteractiveMode=false",
+      # "mvn archetype:generate -DgroupId=com.nextwork.app -DartifactId=nextwork-web-project -DarchetypeArtifactId=maven-archetype-webapp -DinteractiveMode=false",
+      "mkdir nextwork-web-project",
       "sudo dnf update -y",
       "sudo dnf install -y git",
       "git --version",
       "cd nextwork-web-project",
       "git init",
-      "git remote add origin https://github.com/cossioyee/nextwork-web-project.git"
+      "git remote add origin https://github.com/cossioyee/nextwork-web-project.git",
+      "git pull origin master",
+      "cat /home/ec2-user/nextwork-web-project/src/main/webapp/index.jsp"
     ]
 
     connection {
