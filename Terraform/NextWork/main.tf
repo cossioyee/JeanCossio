@@ -20,6 +20,7 @@ resource "aws_instance" "app_server" {
     "sg-0982f4b699100a2b5"
   ]
   key_name = "myWebAppKeyPair"
+  iam_instance_profile = "EC2-instance-nextwork-cicd"
   tags = {
     Name = "NextWork-WebApp"
   }
@@ -31,10 +32,10 @@ resource "aws_instance" "app_server" {
       "sudo dnf install -y java-1.8.0-amazon-corretto-devel",
       "echo 'export JAVA_HOME=/usr/lib/jvm/java-1.8.0-amazon-corretto.x86_64' >> ~/.bashrc",
       "echo 'export PATH=/usr/lib/jvm/java-1.8.0-amazon-corretto.x86_64/jre/bin/:/opt/apache-maven-3.5.2/bin:$PATH' >> ~/.bashrc",
+      "echo 'export CODEARTIFACT_AUTH_TOKEN=`aws codeartifact get-authorization-token --domain nextwork --domain-owner 742925356489 --region us-east-1 --query authorizationToken --output text`' >> ~/.bashrc",
       "source ~/.bashrc",
       "mvn -v",
       "java -version",
-      # "mvn archetype:generate -DgroupId=com.nextwork.app -DartifactId=nextwork-web-project -DarchetypeArtifactId=maven-archetype-webapp -DinteractiveMode=false",
       "mkdir nextwork-web-project",
       "sudo dnf update -y",
       "sudo dnf install -y git",
@@ -43,7 +44,7 @@ resource "aws_instance" "app_server" {
       "git init",
       "git remote add origin https://github.com/cossioyee/nextwork-web-project.git",
       "git pull origin master",
-      "cat /home/ec2-user/nextwork-web-project/src/main/webapp/index.jsp"
+      "mvn -s settings.xml compile"
     ]
 
     connection {
