@@ -27,7 +27,7 @@ resource "aws_codebuild_project" "nextwork-devops-cicd-2" {
   }
 
   environment {
-    compute_type    = "BUILD_GENERAL1_MEDIUM"
+    compute_type    = "BUILD_GENERAL1_SMALL"
     image           = "aws/codebuild/amazonlinux-x86_64-standard:corretto8"
     type            = "LINUX_CONTAINER"
   }
