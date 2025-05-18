@@ -73,6 +73,23 @@ for index, row in df.iterrows():
     current_month = row['Mes']
     current_year = row['Año']
     if previous_month is not None and (current_month != previous_month or current_year != previous_year):
+        # Calcular sumatorias del mes anterior
+        mes_anterior = previous_month
+        año_anterior = previous_year
+        mask = (df['Mes'] == mes_anterior) & (df['Año'] == año_anterior)
+        sum_saliente = df.loc[mask, 'Saliente'].sum()
+        sum_entrante = df.loc[mask, 'Entrante'].sum()
+        # Crear fila de sumatoria
+        sum_row = pd.Series([None]*len(df.columns), index=df.columns)
+        sum_row['Descripción'] = f"Sumatoria {mes_anterior:02d}-{año_anterior}"
+        sum_row['Saliente'] = sum_saliente
+        sum_row['Entrante'] = sum_entrante
+        new_rows.append(sum_row)
+        # Agregar fila de sumatoria total del mes anterior
+        sum_total_row = pd.Series([None]*len(df.columns), index=df.columns)
+        sum_total_row['Descripción'] = f"Sumatoria Total {mes_anterior:02d}-{año_anterior}"
+        sum_total_row['Saliente'] = sum_saliente + sum_entrante
+        new_rows.append(sum_total_row)
         for _ in range(4):
             new_rows.append(pd.Series([None] * len(df.columns), index=df.columns))
     new_rows.append(row)
