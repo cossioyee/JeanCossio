@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: myfin
+  name: myfin
+  namespace: jeancossio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myfin
+  template:
+    metadata:
+      labels:
+        app: myfin
+    spec:
+      containers:
+        - name: db
+          image: mysql:8.4
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_DATABASE
+              value: "myfin"
+            - name: MYSQL_USER
+              value: "myfin"
+            - name: MYSQL_PASSWORD
+              value: "myfinpassword"
+            - name: MYSQL_ROOT_PASSWORD
+              value: "myfinpassword"
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: mysql-storage
+      volumes:
+        - name: mysql-storage
+          persistentVolumeClaim:
+            claimName: mysql-pv-claim

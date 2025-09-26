@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: myfin
+  name: myfin
+  namespace: jeancossio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myfin
+  template:
+    metadata:
+      labels:
+        app: myfin
+    spec:
+      initContainers:
+        - name: db
+          image: mysql:8.4
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_DATABASE
+              value: "myfin"
+            - name: MYSQL_USER
+              value: "myfin"
+            - name: MYSQL_PASSWORD
+              value: "myfinpassword"
+            - name: MYSQL_ROOT_PASSWORD
+              value: "myfinpassword"
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: mysql-storage
+      containers:
+        - name: myfin-api
+          image: ghcr.io/afaneca/myfin-api:latest
+          ports:
+            - containerPort: 8081
+          env:
+            - name: DB_NAME
+              value: "myfin"
+            - name: DB_USER
+              value: "myfin"
+            - name: DB_PW
+              value: "myfinpassword"
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_HOST
+              value: "db"
+            - name: PORT
+              value: "3001"
+            - name: LOGGING
+              value: "true"
+            - name: BYPASS_SESSION_CHECK
+              value: "false"
+            - name: ENABLE_USER_SIGNUP
+              value: "true"
+        - name: myfin-frontend
+          image: ghcr.io/afaneca/myfin:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: REACT_APP_API_URL
+              value: http://myfin-api:3001
+            - name: REACT_APP_ENABLE_USER_SIGNUP
+              value: "true"
+            - name: REACT_APP_ENABLE_USER_SIGNIN
+              value: "true"
+            - name: REACT_APP_ENABLE_USER_SIGNOUT
+              value: "true"
+            - name: REACT_APP_ENABLE_USER_FORGOT_PASSWORD
+              value: "true"
+      volumes:
+        - name: mysql-storage
+          persistentVolumeClaim:
+            claimName: mysql-pv-claim
