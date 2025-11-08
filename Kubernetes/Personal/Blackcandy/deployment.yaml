@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: blackcandy
+  name: blackcandy
+  namespace: jeancossio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: blackcandy
+  template:
+    metadata:
+      labels:
+        app: blackcandy
+    spec:
+      containers:
+      - image: ghcr.io/blackcandy-org/blackcandy:latest
+        name: blackcandy
+        ports:
+          - containerPort: 80
+#        volumeMounts:
+#          - mountPath: /usr/share/nginx/html
+#            name: mainsite-volume
+#      volumes:
+#        - name: mainsite-volume
+#          persistentVolumeClaim:
+#            claimName: mainsite-data

@@ -7,9 +7,14 @@ metadata:
   namespace: jeancossio
 spec:
   ports:
-  - port: 8016
+  - name: nginx
+    port: 8016
     protocol: TCP
     targetPort: 80
+  - name: python
+    port: 8017
+    protocol: TCP
+    targetPort: 2000
   selector:
     app: cossiomainsite
-  type: LoadBalancer 
+  type: LoadBalancer

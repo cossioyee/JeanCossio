@@ -23,7 +23,13 @@ spec:
         volumeMounts:
           - mountPath: /usr/share/nginx/html
             name: mainsite-volume
+      - image: python-test:web
+        name: python-flask
+        ports:
+          - containerPort: 2000
       volumes:
         - name: mainsite-volume
           persistentVolumeClaim:
             claimName: mainsite-data
+
+

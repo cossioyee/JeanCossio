@@ -1,0 +1,139 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: neko
+  name: neko
+  namespace: jeancossio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: neko
+  template:
+    metadata:
+      labels:
+        app: neko
+    spec:
+      containers:
+      - image: ghcr.io/m1k1o/neko/firefox:latest
+        name: neko
+        env:
+          - name: NEKO_WEBRTC_EPR
+            value: "56000-56100"
+          - name: NEKO_WEBRTC_NAT1TO1
+            value: "127.0.0.1"
+          - name: NEKO_MEMBER_MULTIUSER_USER_PASSWORD
+            value: "neko"
+          - name: NEKO_MEMBER_MULTIUSER_ADMIN_PASSWORD
+            value: "admin"
+        ports:
+          - containerPort: 8080
+          - containerPort: 56000
+          - containerPort: 56001
+          - containerPort: 56002
+          - containerPort: 56003
+          - containerPort: 56004
+          - containerPort: 56005
+          - containerPort: 56006
+          - containerPort: 56007
+          - containerPort: 56008
+          - containerPort: 56009
+          - containerPort: 56010
+          - containerPort: 56011
+          - containerPort: 56012
+          - containerPort: 56013
+          - containerPort: 56014
+          - containerPort: 56015
+          - containerPort: 56016
+          - containerPort: 56017
+          - containerPort: 56018
+          - containerPort: 56019
+          - containerPort: 56020
+          - containerPort: 56021
+          - containerPort: 56022
+          - containerPort: 56023
+          - containerPort: 56024
+          - containerPort: 56025
+          - containerPort: 56026
+          - containerPort: 56027
+          - containerPort: 56028
+          - containerPort: 56029
+          - containerPort: 56030
+          - containerPort: 56031
+          - containerPort: 56032
+          - containerPort: 56033
+          - containerPort: 56034
+          - containerPort: 56035
+          - containerPort: 56036
+          - containerPort: 56037
+          - containerPort: 56038
+          - containerPort: 56039
+          - containerPort: 56040
+          - containerPort: 56041
+          - containerPort: 56042
+          - containerPort: 56043
+          - containerPort: 56044
+          - containerPort: 56045
+          - containerPort: 56046
+          - containerPort: 56047
+          - containerPort: 56048
+          - containerPort: 56049
+          - containerPort: 56050
+          - containerPort: 56051
+          - containerPort: 56052
+          - containerPort: 56053
+          - containerPort: 56054
+          - containerPort: 56055
+          - containerPort: 56056
+          - containerPort: 56057
+          - containerPort: 56058
+          - containerPort: 56059
+          - containerPort: 56060
+          - containerPort: 56061
+          - containerPort: 56062
+          - containerPort: 56063
+          - containerPort: 56064
+          - containerPort: 56065
+          - containerPort: 56066
+          - containerPort: 56067
+          - containerPort: 56068
+          - containerPort: 56069
+          - containerPort: 56070
+          - containerPort: 56071
+          - containerPort: 56072
+          - containerPort: 56073
+          - containerPort: 56074
+          - containerPort: 56075
+          - containerPort: 56076
+          - containerPort: 56077
+          - containerPort: 56078
+          - containerPort: 56079
+          - containerPort: 56080
+          - containerPort: 56081
+          - containerPort: 56082
+          - containerPort: 56083
+          - containerPort: 56084
+          - containerPort: 56085
+          - containerPort: 56086
+          - containerPort: 56087
+          - containerPort: 56088
+          - containerPort: 56089
+          - containerPort: 56090
+          - containerPort: 56091
+          - containerPort: 56092
+          - containerPort: 56093
+          - containerPort: 56094
+          - containerPort: 56095
+          - containerPort: 56096
+          - containerPort: 56097
+          - containerPort: 56098
+          - containerPort: 56099
+          - containerPort: 56100
+        #        volumeMounts:
+#          - mountPath: /usr/share/nginx/html
+#            name: mainsite-volume
+#      volumes:
+#        - name: mainsite-volume
+#          persistentVolumeClaim:
+#            claimName: mainsite-data
