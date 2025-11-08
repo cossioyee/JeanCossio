@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  creationTimestamp: null
+  name: jeancossio
+spec: {}
+status: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: cossiomainsite
+  name: cossiomainsite
+  namespace: jeancossio
+spec:
+  ports:
+  - name: nginx
+    port: 8016
+    protocol: TCP
+    targetPort: 80
+  - name: python
+    port: 8017
+    protocol: TCP
+    targetPort: 2000
+  selector:
+    app: cossiomainsite
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mainsite-data
+  namespace: jeancossio
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: cossiomainsite
+  name: cossiomainsite
+  namespace: jeancossio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cossiomainsite
+  template:
+    metadata:
+      labels:
+        app: cossiomainsite
+    spec:
+      containers:
+      - image: nginx:1.27.4
+        name: nginx
+        ports:
+          - containerPort: 80
+        volumeMounts:
+          - mountPath: /usr/share/nginx/html
+            name: mainsite-volume
+      - image: python-test:web
+        name: python-flask
+        ports:
+          - containerPort: 2000
+      volumes:
+        - name: mainsite-volume
+          persistentVolumeClaim:
+            claimName: mainsite-data
