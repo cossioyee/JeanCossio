@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  creationTimestamp: null
+  name: climapp
+spec: {}
+status: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: climapp
+  name: climapp
+  namespace: climapp
+spec:
+  ports:
+  - name: flask
+    port: 5000
+    protocol: TCP
+    targetPort: 5000
+  selector:
+    app: climapp
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: climapp-data
+  namespace: climapp
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: climapp
+  name: climapp
+  namespace: climapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: climapp
+  template:
+    metadata:
+      labels:
+        app: climapp
+    spec:
+      containers:
+      - image: python-test:web
+        name: python-flask
+        ports:
+          - containerPort: 5000
+      volumes:  
+        - name: climapp-volume
+          persistentVolumeClaim:
+            claimName: climapp-data
