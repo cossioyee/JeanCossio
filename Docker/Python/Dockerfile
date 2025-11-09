@@ -1,13 +1,13 @@
-FROM python:3.14-rc-alpine
+FROM python:3.14-slim
 
-WORKDIR /app
+WORKDIR /climapp
 
-COPY web.py /app
+COPY /c/JeanCossio/Python/climapp /app
 
-RUN pip install flask
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
-EXPOSE 2000
+EXPOSE 5000
 
-RUN ls -la /app
+ENV FLASK_APP=app.py
 
-ENTRYPOINT ["python", "web.py"]
+CMD ["python", "app.py"]
