@@ -28,19 +28,19 @@ variable "environment" {
 variable "vpc_cidr" {
   description = "Rango de IPs para la VPC"
   type        = string
-  default     = "10.0.0.0/16"
+  default     = "10.1.0.0/16"
 }
 
 variable "public_subnet_cidrs" {
   description = "CIDRs para subnets publicas"
   type        = list(string)
-  default     = ["10.0.1.0/24", "10.0.2.0/24"]
+  default     = ["10.1.3.0/24", "10.1.4.0/24"]
 }
 
 variable "private_subnet_cidrs" {
   description = "CIDRs para subnets privadas"
   type        = list(string)
-  default     = ["10.0.10.0/24", "10.0.20.0/24"]
+  default     = ["10.1.30.0/24", "10.1.40.0/24"]
 }
 
 #-------------------------------------------------------------------
@@ -52,7 +52,7 @@ resource "aws_vpc" "main" {
   enable_dns_support   = true
 
   tags = {
-    Name        = "${var.environment}-vpc"
+    Name        = "${var.environment}-tf-vpc"
     Environment = var.environment
   }
 }

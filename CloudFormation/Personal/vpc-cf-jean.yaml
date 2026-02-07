@@ -55,7 +55,7 @@ Resources:
       EnableDnsSupport: true
       Tags:
         - Key: Name
-          Value: !Sub '${Environment}-vpc'
+          Value: !Sub '${Environment}-cf-vpc'
         - Key: Environment
           Value: !Ref Environment
 
