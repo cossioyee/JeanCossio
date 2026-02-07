@@ -58,6 +58,13 @@ resource "aws_vpc" "main" {
 }
 
 #-------------------------------------------------------------------
+# Data Source - Obtener AZs disponibles
+#-------------------------------------------------------------------
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+#-------------------------------------------------------------------
 # Internet Gateway
 #-------------------------------------------------------------------
 resource "aws_internet_gateway" "main" {
