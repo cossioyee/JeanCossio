@@ -212,7 +212,7 @@ Resources:
       RuleNumber: 100
       Protocol: -1  # Todos los protocolos
       Egress: true
-      RuleAction: deny
+      RuleAction: allow
       CidrBlock: 0.0.0.0/0
 
   # Asocia a tu subnet (reemplaza con tu Subnet ID)
