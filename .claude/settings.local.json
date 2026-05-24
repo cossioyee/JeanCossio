@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"D:\\\\estados_de_cuenta\\\\2026\")",
+      "Read(//d/estados_de_cuenta/2026/**)",
+      "Bash(python -c ' *)",
+      "PowerShell(docker exec finanzas-watcher python /app/check_db.py 2>&1; echo \"exit: $LASTEXITCODE\")"
+    ]
+  }
+}
