@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  finanzas:
+    build: .
+    container_name: finanzas-app
+    volumes:
+      - finanzas_data:/data
+
+volumes:
+  finanzas_data:
+    driver: local
