@@ -1,0 +1,15 @@
+services:
+  terraform:
+    build: .
+    image: terraform-oci:latest
+    working_dir: /workspace
+    volumes:
+      # Archivos sensibles montados en runtime, nunca dentro de la imagen
+      - ./terraform.tfvars:/workspace/terraform.tfvars:ro
+      - ~/.oci:/root/.oci:ro
+      - ~/.ssh:/root/.ssh:ro
+      # Estado de terraform persiste entre ejecuciones
+      - ./terraform.tfstate:/workspace/terraform.tfstate
+      - ./.terraform:/workspace/.terraform
+    environment:
+      - TF_LOG=${TF_LOG:-}

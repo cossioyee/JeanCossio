@@ -1,0 +1,28 @@
+# Copia este archivo como terraform.tfvars y llena tus valores reales
+# Los OCIDs se encuentran en: OCI Console > Profile > Tenancy / User Settings
+
+tenancy_ocid     = "ocid1.tenancy.oc1..xxxxxxxxxxxx"
+user_ocid        = "ocid1.user.oc1..xxxxxxxxxxxx"
+fingerprint      = "xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx"
+private_key_path = "~/.oci/oci_api_key.pem"
+
+# Regiones comunes:
+#   México:    mx-queretaro-1
+#   US East:   us-ashburn-1
+#   US West:   us-phoenix-1
+#   Brasil:    sa-saopaulo-1
+region = "mx-queretaro-1"
+
+compartment_ocid    = "ocid1.compartment.oc1..xxxxxxxxxxxx"
+ssh_public_key_path = "~/.ssh/id_rsa.pub"
+
+# VM
+vm_display_name   = "jean-vm-oci"
+vm_ocpus          = 2    # Free tier: hasta 4 OCPUs totales entre todas las A1
+vm_memory_gb      = 12   # Free tier: hasta 24 GB totales entre todas las A1
+vm_boot_volume_gb = 50   # Free tier: hasta 200 GB totales en block volumes
+
+# Red
+vcn_cidr    = "10.0.0.0/16"
+subnet_cidr = "10.0.1.0/24"
+environment = "dev"

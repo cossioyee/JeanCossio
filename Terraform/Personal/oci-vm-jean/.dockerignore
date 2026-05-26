@@ -1,0 +1,10 @@
+# Nunca incluir credenciales ni estado en la imagen
+terraform.tfvars
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
+# Git
+.git/
+.gitignore

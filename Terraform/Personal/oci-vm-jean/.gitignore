@@ -1,0 +1,12 @@
+# Credenciales — nunca al repo
+terraform.tfvars
+
+# Estado de Terraform — contiene IDs y datos sensibles de la infra
+*.tfstate
+*.tfstate.backup
+
+# Directorio local de providers (pesado, se regenera con init)
+.terraform/
+
+# Log de reintentos — temporal, no es parte del código
+retry-apply.log
