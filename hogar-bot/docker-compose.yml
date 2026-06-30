@@ -1,0 +1,26 @@
+services:
+  bot:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    env_file: .env
+    environment:
+      - TZ=America/Panama
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    ports:
+      - "4040:4040"
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    command: http bot:8000
+    depends_on:
+      - bot
+
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8080:8080"
