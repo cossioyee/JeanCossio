@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+import os
+from urllib.parse import parse_qs
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from twilio.request_validator import RequestValidator
@@ -10,21 +13,19 @@ from bot.db.models import Person
 router = APIRouter(prefix="/webhook", tags=["whatsapp"])
 
 
-def _validate_twilio_signature(request: Request, body: bytes) -> None:
-    """Rechaza requests que no vengan de Twilio."""
-    import os
+def _parse_form(body: bytes) -> dict[str, str]:
+    if not body:
+        return {}
+    parsed = parse_qs(body.decode())
+    return {k: v[0] for k, v in parsed.items()}
 
+
+def _validate_twilio_signature(request: Request, form_data: dict[str, str]) -> None:
+    """Rechaza requests que no vengan de Twilio."""
     auth_token = os.environ["TWILIO_AUTH_TOKEN"]
     validator = RequestValidator(auth_token)
     signature = request.headers.get("X-Twilio-Signature", "")
     url = str(request.url)
-
-    # Twilio firma sobre los campos del form, no el body raw
-    form_data = {}
-    if body:
-        from urllib.parse import parse_qs
-        parsed = parse_qs(body.decode())
-        form_data = {k: v[0] for k, v in parsed.items()}
 
     if not validator.validate(url, form_data, signature):
         raise HTTPException(status_code=403, detail="Firma Twilio inválida")
@@ -41,20 +42,17 @@ def _get_sender(phone_number: str, db: Session) -> Person | None:
 
 
 @router.post("/twilio")
-async def twilio_webhook(
-    request: Request,
-    From: str = Form(...),
-    Body: str = Form(...),
-    db: Session = Depends(get_db),
-) -> Response:
+async def twilio_webhook(request: Request, db: Session = Depends(get_db)) -> Response:
     raw_body = await request.body()
-    _validate_twilio_signature(request, raw_body)
+    form_data = _parse_form(raw_body)
+    _validate_twilio_signature(request, form_data)
 
-    sender = _get_sender(From, db)
+    from_number = form_data.get("From", "")
+    sender = _get_sender(from_number, db)
     if sender is None:
         return _twiml_reply("No estás registrado en el bot. Habla con Jean para que te agregue.")
 
-    message = Body.strip()
+    message = form_data.get("Body", "").strip()
 
     # Delegar al handler correspondiente según el contenido del mensaje
     from bot.core import dispatcher

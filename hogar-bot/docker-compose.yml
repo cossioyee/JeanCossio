@@ -8,7 +8,7 @@ services:
     env_file: .env
     environment:
       - TZ=America/Panama
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers --forwarded-allow-ips='*'
 
   ngrok:
     image: ngrok/ngrok:latest
