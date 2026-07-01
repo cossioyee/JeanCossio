@@ -1,20 +1,30 @@
 """
 Ejecutar una sola vez para poblar la DB con datos iniciales.
 Uso: python -m bot.db.seed
+Requiere JEAN_PHONE_NUMBER y ANELYS_PHONE_NUMBER en el entorno (.env).
 """
+import os
+
 from bot.db.database import SessionLocal, create_tables
 from bot.db.models import Person, Setting
+
+
+def _phone_number(env_var: str) -> str:
+    value = os.getenv(env_var)
+    if not value:
+        raise RuntimeError(f"Falta la variable de entorno {env_var} (revisa .env)")
+    return value
 
 
 PERSONS = [
     {
         "name": "Jean",
-        "phone_number": "whatsapp:+521XXXXXXXXXX",  # reemplazar con número real
+        "phone_number": _phone_number("JEAN_PHONE_NUMBER"),
         "is_admin": True,
     },
     {
         "name": "Anelys",
-        "phone_number": "whatsapp:+521YYYYYYYYYY",  # reemplazar con número real
+        "phone_number": _phone_number("ANELYS_PHONE_NUMBER"),
         "is_admin": False,
     },
 ]
