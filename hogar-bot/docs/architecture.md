@@ -8,6 +8,13 @@
   - [Relaciones](#relaciones)
   - [Engine y sesión](#engine-y-sesión)
   - [Seed inicial](#seed-inicial)
+- [Capa web / WhatsApp](#capa-web--whatsapp)
+  - [Webhook de Twilio](#webhook-de-twilio---botwhatsapprouterpy)
+  - [Dispatcher](#dispatcher---botcoredispatcherpy)
+  - [Parser](#parser---botcoreparserpy)
+  - [Sender](#sender---botwhatsappsenderpy)
+- [Scheduler de recordatorios](#scheduler-de-recordatorios---botcoreschedulerpy)
+- [Tests](#tests)
 - [Convenciones](#convenciones)
 
 ---
@@ -32,16 +39,26 @@
 ```
 hogar-bot/
 ├── bot/
-│   ├── core/          # Lógica de negocio (round-robin, scheduler, parser)
+│   ├── core/
+│   │   ├── dispatcher.py  # Routing de intents (listo, listar, nueva/editar/eliminar)
+│   │   ├── parser.py      # Parseo regex de "nueva tarea X, cada N días"
+│   │   └── scheduler.py   # APScheduler: recordatorios mañana/noche
 │   ├── db/
-│   │   ├── models.py  # Modelos SQLAlchemy
-│   │   └── database.py# Engine, sesión, dependencia FastAPI
-│   ├── whatsapp/      # Integración Twilio / sender
-│   └── tests/
+│   │   ├── models.py      # Modelos SQLAlchemy
+│   │   ├── database.py    # Engine, sesión, dependencia FastAPI
+│   │   └── seed.py        # Seed idempotente (lee JEAN_PHONE_NUMBER / ANELYS_PHONE_NUMBER)
+│   └── whatsapp/
+│       ├── router.py      # Endpoint POST /webhook/twilio + validación de firma
+│       └── sender.py      # Envío de mensajes salientes via Twilio REST
+├── tests/                 # pytest — dispatcher y parser con DB SQLite en memoria
 ├── data/
-│   └── hogar.db       # SQLite (generado en runtime, no commitear)
+│   └── hogar.db           # SQLite (generado en runtime, no commitear)
+├── .env                   # Credenciales — nunca se commitea (ver .gitignore)
+├── main.py                # FastAPI app, lifespan (create_tables + seed + scheduler)
+├── docker-compose.yml     # bot + ngrok + adminer
 └── docs/
-    └── architecture.md# Este archivo
+    ├── architecture.md    # Este archivo
+    └── recommendations.md # Decisiones de diseño con contexto y motivo
 ```
 
 ---
@@ -176,9 +193,10 @@ create_tables()  # llamar en el startup event de FastAPI
 ### Seed inicial — `bot/db/seed.py`
 
 Pobla la DB con los datos mínimos para arrancar. Es idempotente: si un
-registro ya existe lo omite sin error.
+registro ya existe lo omite sin error. Se ejecuta automáticamente en el
+`lifespan` de FastAPI (`main.py`) cada vez que arranca el contenedor.
 
-**Ejecutar:**
+**Ejecutar manualmente:**
 ```bash
 python -m bot.db.seed
 ```
@@ -187,13 +205,121 @@ python -m bot.db.seed
 
 | Tabla | Registro | Notas |
 |---|---|---|
-| `persons` | Jean | `is_admin=True`; número en placeholder |
-| `persons` | Anelys | `is_admin=False`; número en placeholder |
+| `persons` | Jean | `is_admin=True`; número desde `JEAN_PHONE_NUMBER` |
+| `persons` | Anelys | `is_admin=False`; número desde `ANELYS_PHONE_NUMBER` |
 | `settings` | `morning_reminder_time` | `07:30` por defecto |
 | `settings` | `night_reminder_time` | `21:00` por defecto |
 
-**Antes de correr en producción:** reemplazar los `phone_number` en
-`PERSONS` con los números reales en formato `whatsapp:+521XXXXXXXXXX`.
+**Números de teléfono vía variables de entorno:** `seed.py` lee
+`JEAN_PHONE_NUMBER` y `ANELYS_PHONE_NUMBER` de `.env` (nunca hardcodeados
+en el código). Si faltan, `seed.py` lanza `RuntimeError` explícito en vez
+de insertar un placeholder. Formato esperado: `whatsapp:+<código país><número>`.
+
+---
+
+## Capa web / WhatsApp
+
+### Webhook de Twilio — `bot/whatsapp/router.py`
+
+`POST /webhook/twilio` es el único punto de entrada de mensajes. Flujo:
+
+1. Lee el body raw una sola vez (`await request.body()`) y lo parsea a
+   dict con `urllib.parse.parse_qs` — **no** se declaran `From`/`Body`
+   como `Form(...)` en la firma del endpoint, porque FastAPI consumiría
+   el stream antes de poder leerlo de nuevo para validar la firma
+   (ver [decisión #14](recommendations.md) sobre el bug `RuntimeError: Stream consumed`).
+2. Valida `X-Twilio-Signature` con `twilio.request_validator.RequestValidator`
+   contra la URL completa del request. Si no coincide → `403`.
+3. Busca al remitente por `From` en `persons`. Si no existe → mensaje
+   amigable de "no estás registrado", sin tocar el dispatcher.
+4. Delega el texto (`Body`) a `bot.core.dispatcher.handle()`.
+5. Devuelve la respuesta como TwiML (`MessagingResponse`).
+
+**Detrás de un reverse proxy (ngrok):** uvicorn necesita `--proxy-headers
+--forwarded-allow-ips='*'` para confiar en el `X-Forwarded-Proto: https`
+que reenvía ngrok; sin esto reconstruye la URL como `http://` y la firma
+de Twilio (calculada sobre `https://`) nunca valida (ver
+[decisión #15](recommendations.md)).
+
+---
+
+### Dispatcher — `bot/core/dispatcher.py`
+
+Recibe el mensaje ya limpio y decide qué handler ejecutar, por orden de
+prioridad con regex:
+
+| Patrón | Handler | Notas |
+|---|---|---|
+| `listo` / `hecho` / `ya` / `terminé` / `done` | `_completar()` | Marca la tarea más urgente del sender como completada, avanza el round-robin |
+| `mis tareas` / `qué me toca` / `pendientes` | `_listar()` | Lista tareas activas asignadas al sender |
+| `nueva/editar/eliminar tarea` | delega a `parser.parse_config()` | Requiere `sender.is_admin` |
+| cualquier otro texto | `_ayuda()` | Lista de comandos disponibles |
+
+**Round-robin (`_next_assignee`):** ordena `Person` por `id` y avanza con
+módulo. Con 2 personas fijas no se justifica un campo `rr_position`
+dedicado (ver decisión #11 en `recommendations.md`).
+
+---
+
+### Parser — `bot/core/parser.py`
+
+Solo se invoca para los comandos de configuración de tareas (`nueva`,
+`editar`, `eliminar`), y solo si el sender es admin. Usa regex, sin
+llamar a Claude API — el formato esperado es fijo:
+`nueva tarea [nombre], cada [N] días`.
+
+- `_crear()`: rechaza si ya existe una tarea activa con ese nombre.
+- `_editar()`: busca por coincidencia parcial (`ilike`) y actualiza `frequency_days`.
+- `_eliminar()`: soft delete (`is_active=False`), nunca borra la fila.
+
+---
+
+### Sender — `bot/whatsapp/sender.py`
+
+Envío de mensajes salientes (usado por el scheduler para recordatorios).
+Cliente Twilio singleton (`_get_client()`). **No agregar `sleep()` entre
+envíos** — con 2 usuarios el rate limit del sandbox (~1 msg/seg) nunca se
+alcanza; ver la advertencia en el docstring del archivo.
+
+---
+
+## Scheduler de recordatorios — `bot/core/scheduler.py`
+
+`BackgroundScheduler` de APScheduler, timezone fija `America/Panama`.
+En `setup()` (llamado desde el `lifespan` de `main.py`):
+
+1. Lee `morning_reminder_time` y `night_reminder_time` de `settings`
+   (fallback `07:30`/`21:00` si no existen).
+2. Registra dos `CronTrigger`, uno por horario, con `id` fijo y
+   `replace_existing=True` (evita duplicar jobs si se reinicia el proceso).
+3. `_send_reminders()` agrupa las tareas activas por `current_assignee_id`
+   y envía un mensaje por persona con la lista de tareas pendientes.
+
+**v2 pendiente:** leer `sleep_start`/`sleep_end` de `Person` para no
+enviar recordatorios en horario de sueño (campos ya en el schema desde v1).
+
+---
+
+## Tests
+
+`tests/` cubre `dispatcher` y `parser` — la lógica de negocio pura, sin
+levantar el servidor HTTP ni mockear Twilio.
+
+- **`tests/conftest.py`:** fixture `db_session` crea un engine SQLite
+  **en memoria** propio (`sqlite:///:memory:`), independiente del engine
+  persistente de `bot/db/database.py` (que siempre apunta a
+  `data/hogar.db`). Fixtures `jean` y `anelys` insertan las dos personas
+  base — el orden de creación importa porque el round-robin depende del
+  `id` ascendente.
+- **`tests/test_dispatcher.py`:** intents (`listo`, `mis tareas`,
+  configuración), control de admin, alternancia del round-robin.
+- **`tests/test_parser.py`:** crear/editar/eliminar tarea, duplicados,
+  formato no reconocido.
+
+**Ejecutar:**
+```bash
+make test   # docker compose run --rm bot pytest
+```
 
 ---
 

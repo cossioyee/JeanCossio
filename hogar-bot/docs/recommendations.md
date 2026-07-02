@@ -81,6 +81,23 @@ Archivo acumulativo. Cada recomendación incluye el contexto, la decisión tomad
 
 ---
 
+### 14. No mezclar `Form(...)` con `request.body()` en el mismo endpoint
+**Contexto:** El webhook validaba la firma de Twilio leyendo el body raw con `await request.body()`, pero el endpoint también declaraba `From: str = Form(...)` y `Body: str = Form(...)` en la firma de la función.
+**Decisión:** Eliminar los parámetros `Form(...)`; leer el body una sola vez y parsearlo manualmente con `urllib.parse.parse_qs`, reutilizando el mismo dict tanto para validar la firma como para extraer `From`/`Body`.
+**Por qué:** FastAPI resuelve los parámetros `Form(...)` consumiendo el stream del request antes de ejecutar el cuerpo del handler. El `await request.body()` posterior encontraba el stream ya consumido y lanzaba `RuntimeError: Stream consumed`, devolviendo `500` en cada mensaje entrante — el bot nunca respondía.
+
+### 15. `--proxy-headers --forwarded-allow-ips='*'` en uvicorn detrás de ngrok
+**Contexto:** Con el fix de la decisión #14, el webhook pasó de `500` a `403 Forbidden` en todos los requests reales de Twilio.
+**Decisión:** Agregar `--proxy-headers --forwarded-allow-ips='*'` al comando de uvicorn en `docker-compose.yml`.
+**Por qué:** ngrok reenvía el tráfico al contenedor `bot` por HTTP plano dentro de la red de Docker, agregando el header `X-Forwarded-Proto: https`. Uvicorn por defecto solo confía en ese header si el request viene de `127.0.0.1`; como ngrok corre en otro contenedor con otra IP, lo ignoraba y reconstruía `request.url` con esquema `http://`. Twilio firma sobre la URL pública real (`https://...`), así que la validación de firma nunca coincidía. `forwarded_allow_ips='*'` es aceptable aquí porque solo hay un reverse proxy interno (ngrok) en la red de Docker, no tráfico público directo al puerto de uvicorn.
+
+### 16. Números de teléfono de `seed.py` movidos a variables de entorno
+**Contexto:** `seed.py` tenía los números reales de WhatsApp de Jean y Anelys hardcodeados en el código.
+**Decisión:** Leerlos de `JEAN_PHONE_NUMBER` y `ANELYS_PHONE_NUMBER` en `.env`, con `RuntimeError` explícito si faltan.
+**Por qué:** `.env` está en `.gitignore` y nunca se commitea; hardcodear PII (números de teléfono reales) en código versionado los deja en el historial de git permanentemente, incluso si luego se eliminan.
+
+---
+
 ## Para v2 (pendientes de implementar)
 
 - Leer `sleep_start`/`sleep_end` de `persons` en el scheduler para evitar recordatorios nocturnos
