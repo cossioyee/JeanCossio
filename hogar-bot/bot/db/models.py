@@ -10,6 +10,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+from bot.core.tiempo import ahora_utc
+
 
 class Base(DeclarativeBase):
     pass
@@ -24,7 +26,7 @@ class Person(Base):
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     sleep_start: Mapped[time | None] = mapped_column(Time, nullable=True)
     sleep_end: Mapped[time | None] = mapped_column(Time, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=ahora_utc, nullable=False)
 
     tasks_assigned: Mapped[list["Task"]] = relationship(
         "Task", foreign_keys="Task.current_assignee_id", back_populates="current_assignee"
@@ -44,16 +46,19 @@ class Task(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     frequency_days: Mapped[int] = mapped_column(Integer, nullable=False)
     current_assignee_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("persons.id"), nullable=True
+        Integer, ForeignKey("persons.id"), nullable=True, index=True
     )
     created_by_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("persons.id"), nullable=True
     )
-    next_due_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    next_due_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    # Último recordatorio enviado para esta tarea — evita reenviar si el
+    # scheduler corre dos veces seguidas (ej. reinicio del contenedor)
+    last_reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=ahora_utc, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime, default=ahora_utc, onupdate=ahora_utc, nullable=False
     )
 
     current_assignee: Mapped["Person | None"] = relationship(
@@ -71,9 +76,13 @@ class TaskCompletion(Base):
     __tablename__ = "task_completions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    task_id: Mapped[int] = mapped_column(Integer, ForeignKey("tasks.id"), nullable=False)
-    person_id: Mapped[int] = mapped_column(Integer, ForeignKey("persons.id"), nullable=False)
-    completed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    task_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("tasks.id"), nullable=False, index=True
+    )
+    person_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("persons.id"), nullable=False, index=True
+    )
+    completed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
 
     task: Mapped["Task"] = relationship("Task", back_populates="completions")
     person: Mapped["Person"] = relationship("Person", back_populates="completions")

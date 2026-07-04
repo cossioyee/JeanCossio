@@ -292,11 +292,25 @@ En `setup()` (llamado desde el `lifespan` de `main.py`):
    (fallback `07:30`/`21:00` si no existen).
 2. Registra dos `CronTrigger`, uno por horario, con `id` fijo y
    `replace_existing=True` (evita duplicar jobs si se reinicia el proceso).
-3. `_send_reminders()` agrupa las tareas activas por `current_assignee_id`
-   y envía un mensaje por persona con la lista de tareas pendientes.
+3. `_send_reminders()` filtra solo tareas **vencidas**
+   (`next_due_at <= now`), las agrupa por `current_assignee_id` y envía un
+   mensaje por persona con la lista de tareas pendientes.
 
-**v2 pendiente:** leer `sleep_start`/`sleep_end` de `Person` para no
-enviar recordatorios en horario de sueño (campos ya en el schema desde v1).
+**Reglas agregadas en v2:**
+- **Ventana de sueño:** si la hora local (America/Panama) cae dentro de
+  `sleep_start`/`sleep_end` de la persona, el recordatorio se omite. El
+  rango puede cruzar medianoche (ej. 22:00 → 06:00).
+- **Anti-duplicado:** cada envío marca `Task.last_reminder_sent_at`; si el
+  último recordatorio fue hace menos de 4 horas no se reenvía (protege
+  contra reinicios del contenedor cerca de la hora cron). La cadencia de
+  reenvío de tareas vencidas la dan los dos crons diarios.
+- **Fechas:** la DB guarda UTC naive; toda conversión a hora local vive en
+  `bot/core/tiempo.py` (reemplaza al deprecado `datetime.utcnow()`).
+
+**Migraciones — `bot/db/migrations.py`:** `create_all()` no altera tablas
+existentes, así que los cambios de schema de v2 (columna
+`last_reminder_sent_at`, índices, backfill de `next_due_at`) viven como
+pasos idempotentes que corren en cada arranque desde el `lifespan`.
 
 ---
 

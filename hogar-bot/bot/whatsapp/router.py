@@ -16,7 +16,10 @@ router = APIRouter(prefix="/webhook", tags=["whatsapp"])
 def _parse_form(body: bytes) -> dict[str, str]:
     if not body:
         return {}
-    parsed = parse_qs(body.decode())
+    # keep_blank_values: Twilio firma sobre TODOS los parámetros, incluidos
+    # los vacíos (ej. Body="" en mensajes solo-media); si parse_qs los
+    # descarta, la firma calculada nunca coincide y se rechaza con 403
+    parsed = parse_qs(body.decode(), keep_blank_values=True)
     return {k: v[0] for k, v in parsed.items()}
 
 

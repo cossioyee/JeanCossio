@@ -1,8 +1,9 @@
 import re
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from sqlalchemy.orm import Session
 
+from bot.core import tiempo
 from bot.db.models import Person, Task, TaskCompletion
 
 _LISTO = re.compile(r"^(listo|hecho|ya|termin[eé]|done)[\s!.]*$", re.IGNORECASE)
@@ -42,16 +43,17 @@ def _completar(sender: Person, db: Session) -> str:
     if task is None:
         return "No tienes tareas pendientes. Buen trabajo!"
 
+    ahora = tiempo.ahora_utc()
     db.add(TaskCompletion(
         task_id=task.id,
         person_id=sender.id,
-        completed_at=datetime.utcnow(),
+        completed_at=ahora,
     ))
 
     next_person = _next_assignee(task.current_assignee_id, db)
     task.current_assignee_id = next_person.id
-    task.next_due_at = datetime.utcnow() + timedelta(days=task.frequency_days)
-    task.updated_at = datetime.utcnow()
+    task.next_due_at = ahora + timedelta(days=task.frequency_days)
+    task.updated_at = ahora
     db.commit()
 
     return f"Perfecto! '{task.name}' lista. Ahora le toca a {next_person.name}."
@@ -69,7 +71,12 @@ def _listar(sender: Person, db: Session) -> str:
 
     lines = ["Tus tareas:"]
     for t in tasks:
-        due = f"vence {t.next_due_at.strftime('%d/%m')}" if t.next_due_at else "sin fecha"
+        # La fecha se muestra en hora de Panamá; en UTC podría verse
+        # corrida un día cerca de la medianoche
+        if t.next_due_at:
+            due = f"vence {tiempo.a_hora_local(t.next_due_at).strftime('%d/%m')}"
+        else:
+            due = "sin fecha"
         lines.append(f"- {t.name} ({due})")
     return "\n".join(lines)
 

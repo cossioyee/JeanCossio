@@ -36,7 +36,8 @@ def test_listo_sin_tareas_pendientes(db_session, jean, anelys):
 
 
 def test_listar_con_tareas(db_session, jean, anelys):
-    _crear_tarea(db_session, jean, next_due_at=datetime(2026, 8, 1))
+    # Mediodía UTC para que la fecha local (Panamá, UTC-5) sea el mismo día
+    _crear_tarea(db_session, jean, next_due_at=datetime(2026, 8, 1, 12, 0))
 
     respuesta = dispatcher.handle("mis tareas", jean, db_session)
 
@@ -86,3 +87,35 @@ def test_round_robin_alterna_entre_dos_personas(db_session, jean, anelys):
     dispatcher.handle("listo", anelys, db_session)
     db_session.refresh(task)
     assert task.current_assignee_id == jean.id
+
+
+# --- casos nuevos v2 ---
+
+def test_listo_completa_la_tarea_mas_urgente(db_session, jean, anelys):
+    tarde = Task(
+        name="Regar plantas", frequency_days=7,
+        current_assignee_id=jean.id, created_by_id=jean.id,
+        next_due_at=datetime(2026, 8, 1),
+    )
+    urgente = Task(
+        name="Lavar platos", frequency_days=2,
+        current_assignee_id=jean.id, created_by_id=jean.id,
+        next_due_at=datetime(2026, 7, 1),
+    )
+    db_session.add_all([tarde, urgente])
+    db_session.commit()
+
+    respuesta = dispatcher.handle("listo", jean, db_session)
+
+    assert "Lavar platos" in respuesta
+    db_session.refresh(tarde)
+    assert tarde.current_assignee_id == jean.id  # la otra no se toca
+
+
+def test_listar_muestra_fecha_en_hora_local(db_session, jean, anelys):
+    # 02:00 UTC del 2 de agosto = 21:00 del 1 de agosto en Panamá
+    _crear_tarea(db_session, jean, next_due_at=datetime(2026, 8, 2, 2, 0))
+
+    respuesta = dispatcher.handle("mis tareas", jean, db_session)
+
+    assert "01/08" in respuesta

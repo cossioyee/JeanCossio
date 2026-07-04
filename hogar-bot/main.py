@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from loguru import logger
 
 from bot.core import scheduler
+from bot.db import migrations
 from bot.db.database import create_tables
 from bot.db.seed import run as run_seed
 from bot.whatsapp.router import router as whatsapp_router
@@ -15,6 +16,7 @@ async def lifespan(app: FastAPI):
     logger.info("Arrancando hogar-bot...")
     os.makedirs("data", exist_ok=True)
     create_tables()
+    migrations.run()
     run_seed()
     scheduler.setup()
     yield

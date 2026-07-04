@@ -16,18 +16,22 @@ def _phone_number(env_var: str) -> str:
     return value
 
 
-PERSONS = [
-    {
-        "name": "Jean",
-        "phone_number": _phone_number("JEAN_PHONE_NUMBER"),
-        "is_admin": True,
-    },
-    {
-        "name": "Anelys",
-        "phone_number": _phone_number("ANELYS_PHONE_NUMBER"),
-        "is_admin": False,
-    },
-]
+def _personas() -> list[dict]:
+    # Se evalúa al ejecutar el seed, no al importar el módulo — así un .env
+    # incompleto falla con un error claro al arrancar, no con un
+    # RuntimeError críptico en el import de main.py
+    return [
+        {
+            "name": "Jean",
+            "phone_number": _phone_number("JEAN_PHONE_NUMBER"),
+            "is_admin": True,
+        },
+        {
+            "name": "Anelys",
+            "phone_number": _phone_number("ANELYS_PHONE_NUMBER"),
+            "is_admin": False,
+        },
+    ]
 
 SETTINGS = [
     {"key": "morning_reminder_time", "value": "07:30"},
@@ -46,7 +50,7 @@ def run() -> None:
 
 
 def _seed_persons(db) -> None:
-    for data in PERSONS:
+    for data in _personas():
         exists = db.query(Person).filter_by(phone_number=data["phone_number"]).first()
         if exists:
             print(f"  [skip] Persona ya existe: {data['name']}")
