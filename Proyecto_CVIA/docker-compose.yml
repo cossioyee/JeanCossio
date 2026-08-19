@@ -1,0 +1,40 @@
+#-------------------------------------------------------------------
+# Docker Compose - Contenedor de Terraform para CVIA
+# Copia .env.example a .env y rellena tus credenciales antes de usar
+#
+# Uso:
+#   docker compose run --rm launcher init
+#   docker compose run --rm launcher apply
+#
+#   docker compose run --rm terraform init -backend-config="bucket=<nombre>"
+#   docker compose run --rm terraform plan
+#   docker compose run --rm terraform apply
+#   docker compose run --rm terraform destroy
+#-------------------------------------------------------------------
+
+services:
+
+  #-------------------------------------------------------------------
+  # launcher - Crea los buckets S3 (correr una sola vez al inicio)
+  #-------------------------------------------------------------------
+  launcher:
+    image: hashicorp/terraform:1.9
+    working_dir: /workspace/launcher
+    volumes:
+      - .:/workspace
+    env_file:
+      - .env
+    entrypoint: ["terraform"]
+
+  #-------------------------------------------------------------------
+  # terraform - Gestiona VPC + EC2 + k3s (el cluster principal)
+  # Init requiere pasar el bucket: -backend-config="bucket=cvia-tf-state-xxxxxx"
+  #-------------------------------------------------------------------
+  terraform:
+    image: hashicorp/terraform:1.9
+    working_dir: /workspace/terraform
+    volumes:
+      - .:/workspace
+    env_file:
+      - .env
+    entrypoint: ["terraform"]

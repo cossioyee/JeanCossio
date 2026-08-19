@@ -1,0 +1,67 @@
+#-------------------------------------------------------------------
+# Namespace - Espacio de nombres separado para el proyecto
+#-------------------------------------------------------------------
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cvia
+  labels:
+    environment: dev
+
+---
+#-------------------------------------------------------------------
+# Deployment - Define cómo correr el contenedor de nginx
+#-------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: cvia
+  labels:
+    app: nginx
+    environment: dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+          # Límites de recursos para que no consuma todo el t4g.micro
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "50m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+
+---
+#-------------------------------------------------------------------
+# Service - Expone nginx al exterior usando NodePort
+# Acceder en: http://<IP_EC2>:30080
+#-------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+  namespace: cvia
+  labels:
+    app: nginx
+spec:
+  type: NodePort
+  selector:
+    app: nginx
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080
+      protocol: TCP

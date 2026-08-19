@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CVIA — Control Panel</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      padding: 2rem;
+    }
+
+    header { text-align: center; }
+    header h1 { font-size: 2rem; font-weight: 700; letter-spacing: 2px; }
+    header p  { color: #8b949e; margin-top: 0.5rem; font-size: 0.95rem; }
+
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    .card h2 { font-size: 1rem; color: #8b949e; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 1px; }
+
+    input[type="password"] {
+      width: 100%;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 0.6rem 1rem;
+      color: #e6edf3;
+      font-size: 0.9rem;
+      outline: none;
+    }
+    input[type="password"]:focus { border-color: #58a6ff; }
+
+    .token-row { display: flex; gap: 0.5rem; }
+    .token-row input { flex: 1; }
+
+    .btn-save {
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      color: #e6edf3;
+      padding: 0.6rem 1rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+    .btn-save:hover { background: #30363d; }
+
+    .actions { display: flex; gap: 1rem; }
+
+    .btn {
+      flex: 1;
+      padding: 0.85rem 1rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn:hover  { opacity: 0.85; }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-up      { background: #238636; color: #fff; }
+    .btn-destroy { background: #da3633; color: #fff; }
+
+    #status {
+      font-size: 0.9rem;
+      line-height: 1.6;
+      min-height: 3rem;
+    }
+
+    #status a { color: #58a6ff; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.6rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .badge-ok      { background: #238636; }
+    .badge-running { background: #9e6a03; }
+    .badge-error   { background: #da3633; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>⚙️ CVIA Control Panel</h1>
+    <p>k3s en EC2 t4g.micro · GitHub Actions + Terraform</p>
+  </header>
+
+  <!-- Token de GitHub -->
+  <div class="card">
+    <h2>GitHub Personal Access Token</h2>
+    <p style="color:#8b949e; font-size:0.85rem; margin-bottom:0.75rem;">
+      Scope requerido: <code>repo → workflow</code>. Se guarda solo en tu navegador (localStorage).
+    </p>
+    <div class="token-row">
+      <input type="password" id="token" placeholder="ghp_..." />
+      <button class="btn-save" onclick="guardarToken()">Guardar</button>
+    </div>
+  </div>
+
+  <!-- Acciones -->
+  <div class="card">
+    <h2>Acciones</h2>
+    <div class="actions">
+      <button class="btn btn-up"      onclick="disparar('apply')"   id="btn-up">🚀 Levantar Cluster</button>
+      <button class="btn btn-destroy" onclick="disparar('destroy')" id="btn-destroy">💣 Destruir Cluster</button>
+    </div>
+  </div>
+
+  <!-- Estado -->
+  <div class="card">
+    <h2>Estado</h2>
+    <div id="status">Ingresa tu token y usa los botones para gestionar el cluster.</div>
+  </div>
+
+  <script>
+    // Repo y workflow — actualizar si cambia el nombre del repo
+    const REPO     = 'cossioyee/JeanCossio';
+    const WORKFLOW = 'cvia-deploy.yml';
+    const BRANCH   = 'main';
+
+    // Cargar token guardado al abrir la página
+    window.onload = () => {
+      const saved = localStorage.getItem('gh_token');
+      if (saved) document.getElementById('token').value = saved;
+    };
+
+    function guardarToken() {
+      const t = document.getElementById('token').value.trim();
+      if (!t) return mostrarEstado('Ingresa un token válido.', 'error');
+      localStorage.setItem('gh_token', t);
+      mostrarEstado('Token guardado en localStorage.', 'ok');
+    }
+
+    async function disparar(action) {
+      const token = localStorage.getItem('gh_token');
+      if (!token) return mostrarEstado('Primero guarda tu GitHub Token.', 'error');
+
+      const labels = { apply: 'Levantando cluster...', destroy: 'Destruyendo cluster...' };
+      mostrarEstado(labels[action], 'running');
+      setBotones(true);
+
+      try {
+        const resp = await fetch(
+          `https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `token ${token}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ref: BRANCH, inputs: { action } })
+          }
+        );
+
+        if (resp.status === 204) {
+          // Esperar 2 segundos para que el run aparezca en la API de GitHub
+          await new Promise(r => setTimeout(r, 2000));
+          const runUrl = await obtenerUltimoRun();
+          mostrarEstado(
+            `Workflow iniciado. <a href="${runUrl}" target="_blank">Ver progreso en GitHub Actions →</a>`,
+            'ok'
+          );
+        } else {
+          const err = await resp.json();
+          mostrarEstado(`Error ${resp.status}: ${err.message}`, 'error');
+        }
+      } catch (e) {
+        mostrarEstado(`Error de red: ${e.message}`, 'error');
+      } finally {
+        setBotones(false);
+      }
+    }
+
+    async function obtenerUltimoRun() {
+      const token = localStorage.getItem('gh_token');
+      try {
+        const resp = await fetch(
+          `https://api.github.com/repos/${REPO}/actions/runs?per_page=1`,
+          { headers: { 'Authorization': `token ${token}` } }
+        );
+        const data = await resp.json();
+        return data.workflow_runs?.[0]?.html_url ?? `https://github.com/${REPO}/actions`;
+      } catch {
+        return `https://github.com/${REPO}/actions`;
+      }
+    }
+
+    function mostrarEstado(msg, tipo) {
+      const colores = { ok: 'badge-ok', running: 'badge-running', error: 'badge-error' };
+      const iconos  = { ok: '✓', running: '⏳', error: '✗' };
+      document.getElementById('status').innerHTML =
+        `<span class="badge ${colores[tipo]}">${iconos[tipo]}</span> ${msg}`;
+    }
+
+    function setBotones(disabled) {
+      document.getElementById('btn-up').disabled      = disabled;
+      document.getElementById('btn-destroy').disabled = disabled;
+    }
+  </script>
+
+</body>
+</html>

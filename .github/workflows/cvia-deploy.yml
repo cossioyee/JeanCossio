@@ -1,0 +1,82 @@
+#-------------------------------------------------------------------
+# GitHub Actions - Despliega o destruye el cluster k3s en AWS
+# Se dispara manualmente desde el sitio web o desde la pestaña Actions
+#-------------------------------------------------------------------
+name: CVIA - Deploy k3s Cluster
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "¿Qué quieres hacer con el cluster?"
+        required: true
+        default: apply
+        type: choice
+        options:
+          - apply
+          - destroy
+
+jobs:
+  terraform:
+    name: Terraform ${{ github.event.inputs.action }}
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: Proyecto_CVIA/terraform
+
+    steps:
+      #-------------------------------------------------------------------
+      # 1. Descargar el código del repositorio
+      #-------------------------------------------------------------------
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      #-------------------------------------------------------------------
+      # 2. Instalar Terraform
+      #-------------------------------------------------------------------
+      - name: Instalar Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.0"
+
+      #-------------------------------------------------------------------
+      # 3. Configurar credenciales de AWS
+      # Requiere GitHub Secrets: AWS_ACCESS_KEY_ID y AWS_SECRET_ACCESS_KEY
+      #-------------------------------------------------------------------
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      #-------------------------------------------------------------------
+      # 4. Inicializar Terraform con el backend S3
+      # TF_STATE_BUCKET es una variable de GitHub Actions (no secret)
+      # Se configura una vez después de correr el launcher
+      #-------------------------------------------------------------------
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=k3s/terraform.tfstate" \
+            -backend-config="region=us-east-1"
+
+      #-------------------------------------------------------------------
+      # 5. Ejecutar la acción elegida (apply o destroy)
+      #-------------------------------------------------------------------
+      - name: Terraform ${{ github.event.inputs.action }}
+        run: terraform ${{ github.event.inputs.action }} -auto-approve -input=false
+
+      #-------------------------------------------------------------------
+      # 6. Mostrar la IP del cluster en el resumen del workflow (solo apply)
+      #-------------------------------------------------------------------
+      - name: Mostrar IP del cluster
+        if: github.event.inputs.action == 'apply'
+        run: |
+          IP=$(terraform output -raw instancia_ip_publica)
+          echo "## Cluster levantado" >> $GITHUB_STEP_SUMMARY
+          echo "- **IP pública**: \`$IP\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Nginx**: http://$IP:30080" >> $GITHUB_STEP_SUMMARY
+          echo "- **SSH**: \`ssh -i ~/.ssh/cvia-key.pem ec2-user@$IP\`" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,20 @@
+# inventory/hosts.example
+# Copia este archivo a inventory/hosts y reemplaza los valores con tus datos reales.
+# El archivo inventory/hosts está en .gitignore — no se commitea.
+
+[webservers]
+web01 ansible_host=<IP_WEB01> ansible_user=<USUARIO> ansible_ssh_private_key_file=/root/.ssh/id_rsa
+web02 ansible_host=<IP_WEB02> ansible_user=<USUARIO> ansible_ssh_private_key_file=/root/.ssh/id_rsa
+
+[dbservers]
+db01 ansible_host=<IP_DB01> ansible_user=<USUARIO> ansible_ssh_private_key_file=/root/.ssh/id_rsa
+
+# Grupo que agrupa otros grupos
+[production:children]
+webservers
+dbservers
+
+# Variables compartidas por todos los hosts
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'

@@ -1,0 +1,19 @@
+services:
+  ansible:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ansible-centos9:2.17
+    container_name: ansible-control-node
+    volumes:
+      - ./playbooks:/ansible/playbooks
+      - ./inventory:/ansible/inventory
+      - ./roles:/ansible/roles
+      # Monta tu clave SSH para conectarte a hosts remotos
+      - ${HOME}/.ssh:/root/.ssh:ro
+    environment:
+      - ANSIBLE_HOST_KEY_CHECKING=False
+    stdin_open: true
+    tty: true
+    # Mantiene el contenedor corriendo para poder ejecutar comandos
+    command: /bin/bash
